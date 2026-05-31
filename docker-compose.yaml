@@ -1,0 +1,66 @@
+services:
+  mongo:
+    image: mongo:8
+    container_name: wassup-mongo
+    environment:
+      - "MONGO_CONTAINER_NAME=wassup-mongo"
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - wassup-network
+
+  redis:
+    image: redis:alpine
+    container_name: wassup-redis
+    environment:
+      - "REDIS_CONTAINER_NAME=wassup-redis"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - wassup-network
+
+  wassup-server-1:
+    build: .
+    container_name: wassup-server-1
+    environment:
+      - "CONTAINER_NAME=wassup-server-1"
+      - "CONTAINER_ADDRESS=wassup-server-1:50051"
+      - "REDIS_CONTAINER_NAME=wassup-redis"
+      - "MONGO_CONTAINER_NAME=wassup-mongo"
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - wassup-network
+
+  wassup-server-2:
+    build: .
+    container_name: wassup-server-2
+    environment:
+      - "CONTAINER_NAME=wassup-server-2"
+      - "CONTAINER_ADDRESS=wassup-server-2:50051"
+      - "REDIS_CONTAINER_NAME=wassup-redis"
+      - "MONGO_CONTAINER_NAME=wassup-mongo"
+    ports:
+      - "8081:8080"
+      - "50052:50051"
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - wassup-network
+
+networks:
+  wassup-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  redis_data:

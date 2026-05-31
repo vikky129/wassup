@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/empty.proto";
+
+service Messenger {
+    rpc SendMessage(AddMessageRequest) returns (google.protobuf.Empty) {}
+    rpc SendMessageDelivered(MessageDeliveredRequest) returns (google.protobuf.Empty) {}
+}
+
+
+message AddMessageRequest {
+    string receiver_id = 1; 
+    AddMessageInfo message = 2;
+}
+
+message AddMessageInfo {
+    string _id  = 1;
+    string conversation_id = 2;
+    string sender_id = 3;
+    string text = 4;
+    string type = 5;
+    string media_url = 6;
+    int64 created_at = 7;
+    int64 updated_at = 8;
+    string status = 9;
+}
+
+message MessageDeliveredRequest {
+    string message_id = 1;
+    string receiver_id = 2;
+    string status = 3;
+}
