@@ -3,7 +3,9 @@ package redis
 import (
 	"context"
 	"fmt"
+	"log"
 	"personal/wassup/config"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -71,6 +73,36 @@ func (ch *CacheHandler) GetContainerDetails(ctx context.Context, userID string) 
 		return nil, err
 	}
 	return results, nil
+}
+
+func (ch *CacheHandler) GetLiveUserAddressForUser(ctx context.Context, userID string, participants []string) (map[string][]string, error) {
+	var userAddress = make(map[string][]string)
+	for _, participant := range participants {
+		if participant == userID {
+			continue
+		}
+
+		recipientLive, _ := ch.CheckKeyPrefixExists(participant)
+		log.Printf("User %s live status: %v\n", participant, recipientLive)
+		if recipientLive {
+			containerAddress, err := ch.GetContainerDetails(ctx, participant)
+			if err != nil {
+				fmt.Println("Error getting container details:", err)
+				continue
+			}
+
+			for _, addressMap := range containerAddress {
+				for key, address := range addressMap {
+					if strings.HasSuffix(key, "name") {
+						continue
+					}
+					userAddress[participant] = append(userAddress[participant], address)
+				}
+			}
+		}
+	}
+
+	return userAddress, nil
 }
 
 func (ch *CacheHandler) Set(key string, otp any) error {

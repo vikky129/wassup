@@ -3,10 +3,7 @@ package bl
 import (
 	"context"
 	"fmt"
-	"log"
-	"personal/wassup/proto"
 	"personal/wassup/spec"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,7 +34,6 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 		SenderID:       userID,
 		CreatedAt:      timeNow,
 		UpdatedAt:      timeNow,
-		Status:         spec.StatusSent,
 	}
 
 	if req.IsNewConversation {
@@ -82,7 +78,16 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 		return nil, err
 	}
 
-	go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
+	var participantList []string
+	for _, participant := range participants {
+		if participant.UserID != userID {
+			participantList = append(participantList, participant.UserID)
+		}
+	}
+
+	go wh.liveNotifyHandler.SendMessage(ctx, userID, participantList, message) // Send message to live recipients via gRPC
+
+	//go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
 
 	return &spec.AddMessageResponse{
 		ConversationID: message.ConversationID,
@@ -105,7 +110,6 @@ func (wh *WassupHandler) AddMediaMessage(ctx context.Context, req *spec.AddMedia
 		MediaURL:       filePath,
 		CreatedAt:      timeNow,
 		UpdatedAt:      timeNow,
-		Status:         spec.StatusSent,
 	}
 
 	if req.IsNewConversation {
@@ -151,7 +155,7 @@ func (wh *WassupHandler) AddMediaMessage(ctx context.Context, req *spec.AddMedia
 		return nil, err
 	}
 
-	go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
+	//go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
 
 	return &spec.AddMessageResponse{
 		ConversationID: message.ConversationID,
@@ -172,39 +176,8 @@ func incrementUnreadCount(participants []spec.Participant, senderID string) []sp
 	for i, participant := range participants {
 		if participant.UserID != senderID {
 			participants[i].UnreadMessageCount++
+			participants[i].MessageStatus = spec.StatusSent
 		}
 	}
 	return participants
-}
-
-func (wh *WassupHandler) LiveSendRecipients(convID, userID string, participants []spec.Participant, message *spec.Message) {
-	ctx := context.Background()
-	for _, participant := range participants {
-		if participant.UserID == userID {
-			continue
-		}
-
-		recipientLive, _ := wh.redisHandler.CheckKeyPrefixExists(participant.UserID)
-		log.Printf("User %s live status: %v\n", participant.UserID, recipientLive)
-		if recipientLive {
-			containerAddress, err := wh.redisHandler.GetContainerDetails(ctx, participant.UserID)
-			if err != nil {
-				fmt.Println("Error getting container details:", err)
-				continue
-			}
-
-			for _, addressMap := range containerAddress {
-				for key, address := range addressMap {
-					fmt.Printf("Sending message to user %s at address %s\n", participant.UserID, address)
-					if strings.HasSuffix(key, "name") {
-						continue
-					}
-					err = proto.SendMessageViaGrpc(address, participant.UserID, message)
-					if err != nil {
-						fmt.Println("GRPC Error", err)
-					}
-				}
-			}
-		}
-	}
 }

@@ -111,3 +111,10 @@ func (ch *ConvHandler) GetUnReadConversations(ctx context.Context, userID string
 
 	return convIDs, nil
 }
+
+func (ch *ConvHandler) UpdateConversationParticipantStatus(ctx context.Context, convID, userID, status string) error {
+	filter := bson.M{"_id": convID, "participants.user_id": userID}
+	update := bson.M{"$set": bson.M{"participants.$.message_status": status}}
+	_, err := ch.collection.UpdateOne(ctx, filter, update)
+	return err
+}

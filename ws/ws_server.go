@@ -3,8 +3,9 @@ package ws
 import (
 	"fmt"
 	"net/http"
-	"personal/wassup/db"
+	"personal/wassup/bl"
 	"personal/wassup/redis"
+	wsclient "personal/wassup/ws_client"
 
 	"github.com/gorilla/websocket"
 )
@@ -18,23 +19,23 @@ var upgrader = websocket.Upgrader{
 }
 
 type WebSocketHandler struct {
-	dbHandler  *db.DBHandler
-	localcache map[string]map[string]*WSClient
+	blHandler  *bl.WassupHandler
+	localcache map[string]map[string]*wsclient.WSClient
 	redisCache *redis.CacheHandler
 }
 
-func NewWebSocketHandler(db *db.DBHandler, redisHandler *redis.CacheHandler) *WebSocketHandler {
+func NewWebSocketHandler(blHandler *bl.WassupHandler, redisHandler *redis.CacheHandler) *WebSocketHandler {
 	return &WebSocketHandler{
-		dbHandler:  db,
-		localcache: make(map[string]map[string]*WSClient),
+		blHandler:  blHandler,
+		localcache: make(map[string]map[string]*wsclient.WSClient),
 		redisCache: redisHandler,
 	}
 }
 
-func (h *WebSocketHandler) GetWSClients(userID string) ([]*WSClient, error) {
+func (h *WebSocketHandler) GetWSClients(userID string) ([]*wsclient.WSClient, error) {
 	fmt.Println("local cache:", h.localcache)
 	if clientMap, ok := h.localcache[userID]; ok {
-		clients := make([]*WSClient, 0, len(clientMap))
+		clients := make([]*wsclient.WSClient, 0, len(clientMap))
 		for _, client := range clientMap {
 			clients = append(clients, client)
 		}
@@ -60,7 +61,7 @@ func (h *WebSocketHandler) WsMessageHandler(w http.ResponseWriter, req *http.Req
 
 	closeConnChan := make(chan struct{})
 
-	wsClient := NewWSClient(conn, h.dbHandler, closeConnChan)
+	wsClient := wsclient.NewWSClient(conn, h.blHandler, closeConnChan, userID, h.redisCache)
 
 	go func() {
 		<-closeConnChan
@@ -76,22 +77,9 @@ func (h *WebSocketHandler) WsMessageHandler(w http.ResponseWriter, req *http.Req
 	}()
 
 	if _, exists := h.localcache[userID]; !exists {
-		h.localcache[userID] = make(map[string]*WSClient)
+		h.localcache[userID] = make(map[string]*wsclient.WSClient)
 	}
 	h.localcache[userID][deviceID] = wsClient
 	fmt.Println("local cache after adding client:", h.localcache)
-	//h.redisCache.Set(fmt.Sprintf("%s:%s", userID, deviceID), containerID)
 	h.redisCache.StoreContainerDetails(req.Context(), userID, deviceID)
-
-	unreadConversations, err := h.dbHandler.ConvHandler.GetUnReadConversations(req.Context(), userID)
-	if err != nil {
-		fmt.Println("Error getting unread conversations:", err)
-	}
-
-	if len(unreadConversations) > 0 {
-		err = h.dbHandler.MessageHandler.UpdateStatusDelivered(req.Context(), unreadConversations, userID)
-		if err != nil {
-			fmt.Println("Error updating message status to delivered:", err)
-		}
-	}
 }

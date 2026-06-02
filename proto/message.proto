@@ -6,7 +6,13 @@ import "google/protobuf/empty.proto";
 
 service Messenger {
     rpc SendMessage(AddMessageRequest) returns (google.protobuf.Empty) {}
-    rpc SendMessageDelivered(MessageDeliveredRequest) returns (google.protobuf.Empty) {}
+    rpc UpdateParticipantStatusForConversation(UpdateParticipantStatusRequest) returns (google.protobuf.Empty) {}
+}
+
+message UpdateParticipantStatusRequest {
+    string conversation_id = 1;
+    string user_id = 2;
+    string status = 3;
 }
 
 
@@ -31,4 +37,8 @@ message MessageDeliveredRequest {
     string message_id = 1;
     string receiver_id = 2;
     string status = 3;
+}
+
+message MessageReadRequest {
+    string converstion_id = 1;
 }

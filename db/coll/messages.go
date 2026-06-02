@@ -97,6 +97,19 @@ func (mh *MsgHandler) GetMessages(ctx context.Context, convID string, limit int,
 }
 
 func (mh *MsgHandler) UpdateStatusDelivered(ctx context.Context, convIDs []string, userID string) error {
-	_, err := mh.collection.UpdateMany(ctx, bson.M{"conversation_id": bson.M{"$in": convIDs}, "sender_id": bson.M{"$ne": userID}, "status": spec.StatusSent}, bson.M{"$set": bson.M{"status": spec.StatusDelivered}})
+	_, err := mh.collection.UpdateMany(ctx, bson.M{"conversation_id": bson.M{"$in": convIDs}, "sender_id": bson.M{"$ne": userID}, "status": string(spec.StatusSent)}, bson.M{"$set": bson.M{"status": string(spec.StatusDelivered)}})
+	return err
+}
+
+func (mh *MsgHandler) UpdateStatusRead(ctx context.Context, convID string, userID string) error {
+	_, err := mh.collection.UpdateMany(
+		ctx,
+		bson.M{
+			"conversation_id": convID,
+			"sender_id":       bson.M{"$ne": userID},
+			"status":          bson.M{"$in": []string{string(spec.StatusSent), string(spec.StatusDelivered)}},
+		},
+		bson.M{"$set": bson.M{"status": string(spec.StatusRead)}},
+	)
 	return err
 }

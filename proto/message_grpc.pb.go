@@ -20,8 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Messenger_SendMessage_FullMethodName          = "/proto.Messenger/SendMessage"
-	Messenger_SendMessageDelivered_FullMethodName = "/proto.Messenger/SendMessageDelivered"
+	Messenger_SendMessage_FullMethodName                            = "/proto.Messenger/SendMessage"
+	Messenger_UpdateParticipantStatusForConversation_FullMethodName = "/proto.Messenger/UpdateParticipantStatusForConversation"
 )
 
 // MessengerClient is the client API for Messenger service.
@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessengerClient interface {
 	SendMessage(ctx context.Context, in *AddMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	SendMessageDelivered(ctx context.Context, in *MessageDeliveredRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UpdateParticipantStatusForConversation(ctx context.Context, in *UpdateParticipantStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type messengerClient struct {
@@ -50,10 +50,10 @@ func (c *messengerClient) SendMessage(ctx context.Context, in *AddMessageRequest
 	return out, nil
 }
 
-func (c *messengerClient) SendMessageDelivered(ctx context.Context, in *MessageDeliveredRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *messengerClient) UpdateParticipantStatusForConversation(ctx context.Context, in *UpdateParticipantStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Messenger_SendMessageDelivered_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Messenger_UpdateParticipantStatusForConversation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *messengerClient) SendMessageDelivered(ctx context.Context, in *MessageD
 // for forward compatibility.
 type MessengerServer interface {
 	SendMessage(context.Context, *AddMessageRequest) (*emptypb.Empty, error)
-	SendMessageDelivered(context.Context, *MessageDeliveredRequest) (*emptypb.Empty, error)
+	UpdateParticipantStatusForConversation(context.Context, *UpdateParticipantStatusRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMessengerServer()
 }
 
@@ -79,8 +79,8 @@ type UnimplementedMessengerServer struct{}
 func (UnimplementedMessengerServer) SendMessage(context.Context, *AddMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
 }
-func (UnimplementedMessengerServer) SendMessageDelivered(context.Context, *MessageDeliveredRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendMessageDelivered not implemented")
+func (UnimplementedMessengerServer) UpdateParticipantStatusForConversation(context.Context, *UpdateParticipantStatusRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateParticipantStatusForConversation not implemented")
 }
 func (UnimplementedMessengerServer) mustEmbedUnimplementedMessengerServer() {}
 func (UnimplementedMessengerServer) testEmbeddedByValue()                   {}
@@ -121,20 +121,20 @@ func _Messenger_SendMessage_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Messenger_SendMessageDelivered_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MessageDeliveredRequest)
+func _Messenger_UpdateParticipantStatusForConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateParticipantStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessengerServer).SendMessageDelivered(ctx, in)
+		return srv.(MessengerServer).UpdateParticipantStatusForConversation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Messenger_SendMessageDelivered_FullMethodName,
+		FullMethod: Messenger_UpdateParticipantStatusForConversation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessengerServer).SendMessageDelivered(ctx, req.(*MessageDeliveredRequest))
+		return srv.(MessengerServer).UpdateParticipantStatusForConversation(ctx, req.(*UpdateParticipantStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -151,8 +151,8 @@ var Messenger_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Messenger_SendMessage_Handler,
 		},
 		{
-			MethodName: "SendMessageDelivered",
-			Handler:    _Messenger_SendMessageDelivered_Handler,
+			MethodName: "UpdateParticipantStatusForConversation",
+			Handler:    _Messenger_UpdateParticipantStatusForConversation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

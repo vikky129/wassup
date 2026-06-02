@@ -135,3 +135,25 @@ func (wh *WassupHandler) ListConversations(ctx context.Context) ([]spec.Conversa
 
 	return wh.dbHandler.ConvHandler.ListConversations(ctx, userID)
 }
+
+func (wh *WassupHandler) UpdateParticipantStatusForConversation(ctx context.Context, convID string, userID string, status string) error {
+	err := wh.dbHandler.ConvHandler.UpdateConversationParticipantStatus(context.Background(), convID, userID, status)
+	if err != nil {
+		fmt.Println("failed updating conversation participant status:", err)
+		return err
+	}
+
+	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, convID)
+	if err != nil {
+		return err
+	}
+
+	var userIDs []string
+	for _, participant := range participants {
+		userIDs = append(userIDs, participant.UserID)
+	}
+
+	go wh.liveNotifyHandler.UpdateParticipantStatusForConversation(ctx, convID, userID, userIDs, status)
+
+	return nil
+}

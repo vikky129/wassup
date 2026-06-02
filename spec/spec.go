@@ -25,10 +25,11 @@ type Conversation struct {
 }
 
 type Participant struct {
-	UserID             string `bson:"user_id" json:"user_id"`
-	JoinedAt           int64  `bson:"joined_at" json:"joined_at"`
-	UnreadMessageCount int    `bson:"unread_message_count" json:"unread_message_count"`
-	Role               string `bson:"role" json:"role"` // "admin" or "member"
+	UserID             string                `bson:"user_id" json:"user_id"`
+	JoinedAt           int64                 `bson:"joined_at" json:"joined_at"`
+	UnreadMessageCount int                   `bson:"unread_message_count" json:"unread_message_count"`
+	Role               string                `bson:"role" json:"role"` // "admin" or "member"
+	MessageStatus      MessageDeliveryStatus `bson:"message_status" json:"message_status"`
 }
 
 // #################       User-facing API Request/Response Structs       #################
@@ -88,15 +89,14 @@ const (
 )
 
 type Message struct {
-	ID             string                `bson:"_id" json:"id"`
-	ConversationID string                `bson:"conversation_id" json:"conversation_id"`
-	SenderID       string                `bson:"sender_id" json:"sender_id"`
-	Text           string                `bson:"text" json:"text"`
-	Type           string                `bson:"type" json:"type"` // "audio", "image", "video", "document"
-	MediaURL       string                `bson:"media_url,omitempty" json:"media_url,omitempty"`
-	CreatedAt      int64                 `bson:"created_at" json:"created_at"`
-	UpdatedAt      int64                 `bson:"updated_at" json:"updated_at"`
-	Status         MessageDeliveryStatus `bson:"status" json:"status"` // "sent", "delivered", "read"
+	ID             string `bson:"_id" json:"id"`
+	ConversationID string `bson:"conversation_id" json:"conversation_id"`
+	SenderID       string `bson:"sender_id" json:"sender_id"`
+	Text           string `bson:"text" json:"text"`
+	Type           string `bson:"type" json:"type"` // "audio", "image", "video", "document"
+	MediaURL       string `bson:"media_url,omitempty" json:"media_url,omitempty"`
+	CreatedAt      int64  `bson:"created_at" json:"created_at"`
+	UpdatedAt      int64  `bson:"updated_at" json:"updated_at"`
 }
 
 type AddMessageRequest struct {

@@ -52,8 +52,10 @@ func Init() {
 	// 	panic(err)
 	// }
 
-	webSocketHandler := ws.NewWebSocketHandler(dbHandler, redisHandler)
-	wassUpHandler := bl.NewWassupHandler(dbHandler, redisHandler)
+	grpcClient := proto.NewGrpcClient(redisHandler)
+
+	wassUpHandler := bl.NewWassupHandler(dbHandler, redisHandler, grpcClient)
+	webSocketHandler := ws.NewWebSocketHandler(wassUpHandler, redisHandler)
 	httpHandler := transport.NewHandler(wassUpHandler)
 	chiRouter := transport.Router(httpHandler, webSocketHandler)
 

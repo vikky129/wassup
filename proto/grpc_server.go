@@ -58,7 +58,7 @@ func (grpcH *GrpcHandler) SendMessage(ctx context.Context, req *AddMessageReques
 						if strings.HasSuffix(key, "name") {
 							continue
 						}
-						go SendMessageDeliveredViaGrpc(address, req.Message.SenderId, req.Message.XId, string(spec.StatusDelivered))
+						go UpdateParticipantStatusForConversationViaGrpc(address, sentTo, req.Message.ConversationId, string(spec.StatusDelivered))
 					}
 				}
 			}
@@ -71,14 +71,15 @@ func (grpcH *GrpcHandler) SendMessage(ctx context.Context, req *AddMessageReques
 	return &emptypb.Empty{}, nil
 }
 
-func (grpcH *GrpcHandler) SendMessageDelivered(ctx context.Context, req *MessageDeliveredRequest) (*emptypb.Empty, error) {
-	wsClients, err := grpcH.wsHandler.GetWSClients(req.ReceiverId)
+func (grpcH *GrpcHandler) UpdateParticipantStatusForConversation(ctx context.Context, req *UpdateParticipantStatusRequest) (*emptypb.Empty, error) {
+	wsClients, err := grpcH.wsHandler.GetWSClients(req.UserId)
 	if err != nil {
-		log.Printf("Error getting WebSocket clients for user %s: %v", req.ReceiverId, err)
+		log.Printf("Error getting WebSocket clients for user %s: %v", req.UserId, err)
 		return nil, err
 	}
 
 	for _, client := range wsClients {
+		fmt.Printf("Sending participant status update to user %s\n", req.UserId)
 		go client.SendMessageOnChannel(req)
 	}
 

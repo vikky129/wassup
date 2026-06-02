@@ -1,11 +1,13 @@
-package ws
+package wsclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
-	"personal/wassup/db"
+	"personal/wassup/bl"
+	"personal/wassup/redis"
 	"sync"
 	"time"
 
@@ -15,23 +17,27 @@ import (
 type WSClient struct {
 	conn         *websocket.Conn
 	messageChan  chan any
-	dbHandler    *db.DBHandler
+	blHandler    *bl.WassupHandler
 	closeChan    chan struct{}
 	responseChan chan any
 	lock         sync.Locker
+	userID       string
+	cacheHandler *redis.CacheHandler
 }
 
-func NewWSClient(conn *websocket.Conn, dbHandler *db.DBHandler, closeChan chan struct{}) *WSClient {
+func NewWSClient(conn *websocket.Conn, blHandler *bl.WassupHandler, closeChan chan struct{}, userID string, cacheHandler *redis.CacheHandler) *WSClient {
 	client := &WSClient{
 		conn:         conn,
 		messageChan:  make(chan any),
-		dbHandler:    dbHandler,
+		blHandler:    blHandler,
 		closeChan:    closeChan,
+		userID:       userID,
 		lock:         &sync.Mutex{},
 		responseChan: make(chan any),
+		cacheHandler: cacheHandler,
 	}
 
-	go readMessage(client.conn, client.closeChan)
+	go client.readMessage(client.conn, client.closeChan)
 	go sendMessage(client.conn, 5*time.Second, client.messageChan, client.closeChan, client.responseChan)
 
 	return client
@@ -45,15 +51,39 @@ func (wsc *WSClient) SendMessageOnChannel(message any) any {
 	return response
 }
 
-func readMessage(conn *websocket.Conn, closeChan chan struct{}) {
+func (wsc *WSClient) readMessage(conn *websocket.Conn, closeChan chan struct{}) {
 	for {
-		_, message, err := conn.ReadMessage()
+		messType, message, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("failed reading message from websocket:", err)
 			closeChan <- struct{}{}
 			return
 		}
-		println("Received:", string(message))
+
+		if messType == websocket.TextMessage {
+			var messageRead MessageRead
+			err = json.Unmarshal(message, &messageRead)
+
+			if err != nil {
+				fmt.Println("failed unmarshaling message read from websocket:", err)
+				continue
+			}
+
+			if messageRead.ConversationID == "" || messageRead.UserID == "" {
+				fmt.Println("invalid message read from websocket: missing conversation ID or user ID")
+				continue
+			}
+
+			if messageRead.MessageType == MessageDeliveryStatus || messageRead.MessageType == MessageReadStatus {
+				err = wsc.blHandler.UpdateParticipantStatusForConversation(context.Background(), messageRead.ConversationID, messageRead.UserID, string(messageRead.MessageType))
+				if err != nil {
+					fmt.Println("failed updating participant status for conversation:", err)
+					continue
+				}
+				fmt.Printf("Successfully updated participant status to %s for user %s in conversation %s\n", messageRead.MessageType, messageRead.UserID, messageRead.ConversationID)
+				continue
+			}
+		}
 	}
 }
 
