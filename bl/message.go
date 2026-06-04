@@ -17,7 +17,7 @@ const (
 	MessageTypeFile  = "file"
 )
 
-func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageRequest) (*spec.AddMessageResponse, error) {
+func (svc *messageService) AddMessage(ctx context.Context, req *spec.AddMessageRequest) (*spec.AddMessageResponse, error) {
 	userID, ok := ctx.Value("user_id").(string)
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("user_id not found in context")
@@ -52,7 +52,7 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 			},
 		}
 
-		convID, err := wh.dbHandler.ConvHandler.CreateConversation(ctx, conversation)
+		convID, err := svc.dbHandler.CreateConversation(ctx, conversation)
 		if err != nil {
 			return nil, err
 		}
@@ -60,20 +60,20 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 		participants = conversation.Participants
 	}
 
-	err := wh.dbHandler.MessageHandler.AddMessage(ctx, message)
+	err := svc.dbHandler.AddMessage(ctx, message)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(participants) == 0 {
-		participants, err = wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, req.ConversationID)
+		participants, err = svc.dbHandler.GetConversationParticipants(ctx, req.ConversationID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	participants = incrementUnreadCount(participants, userID)
-	err = wh.dbHandler.ConvHandler.UpdateAddMessage(ctx, req.ConversationID, participants, timeNow)
+	err = svc.dbHandler.UpdateAddMessage(ctx, req.ConversationID, participants, timeNow)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +85,9 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 		}
 	}
 
-	go wh.liveNotifyHandler.SendMessage(ctx, userID, participantList, message) // Send message to live recipients via gRPC
+	go svc.liveNotifyHandler.SendMessage(context.Background(), userID, participantList, message) // Send message to live recipients via gRPC
 
-	//go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
+	//go svc.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
 
 	return &spec.AddMessageResponse{
 		ConversationID: message.ConversationID,
@@ -95,7 +95,7 @@ func (wh *WassupHandler) AddMessage(ctx context.Context, req *spec.AddMessageReq
 	}, nil
 }
 
-func (wh *WassupHandler) AddMediaMessage(ctx context.Context, req *spec.AddMediaMessageRequest, filePath string) (*spec.AddMessageResponse, error) {
+func (svc *messageService) AddMediaMessage(ctx context.Context, req *spec.AddMediaMessageRequest, filePath string) (*spec.AddMessageResponse, error) {
 	userID, ok := ctx.Value("user_id").(string)
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("user_id not found in context")
@@ -132,30 +132,30 @@ func (wh *WassupHandler) AddMediaMessage(ctx context.Context, req *spec.AddMedia
 			LastMessageAt: timeNow,
 		}
 
-		convID, err := wh.dbHandler.ConvHandler.CreateConversation(ctx, conversation)
+		convID, err := svc.dbHandler.CreateConversation(ctx, conversation)
 		if err != nil {
 			return nil, err
 		}
 		message.ConversationID = convID
 	}
 
-	err := wh.dbHandler.MessageHandler.AddMessage(ctx, message)
+	err := svc.dbHandler.AddMessage(ctx, message)
 	if err != nil {
 		return nil, err
 	}
 
-	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, message.ConversationID)
+	participants, err := svc.dbHandler.GetConversationParticipants(ctx, message.ConversationID)
 	if err != nil {
 		return nil, err
 	}
 
 	participants = incrementUnreadCount(participants, userID)
-	err = wh.dbHandler.ConvHandler.UpdateAddMessage(ctx, message.ConversationID, participants, timeNow)
+	err = svc.dbHandler.UpdateAddMessage(ctx, message.ConversationID, participants, timeNow)
 	if err != nil {
 		return nil, err
 	}
 
-	//go wh.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
+	//go svc.LiveSendRecipients(message.ConversationID, userID, participants, message) // Send message to live recipients via gRPC
 
 	return &spec.AddMessageResponse{
 		ConversationID: message.ConversationID,
@@ -163,8 +163,8 @@ func (wh *WassupHandler) AddMediaMessage(ctx context.Context, req *spec.AddMedia
 	}, nil
 }
 
-func (wh *WassupHandler) GetMessages(ctx context.Context, req *spec.GetMessagesRequest) (*spec.GetMessagesResponse, error) {
-	messages, err := wh.dbHandler.MessageHandler.GetMessages(ctx, req.ConversationID, req.Limit, req.Cursor)
+func (svc *messageService) GetMessages(ctx context.Context, req *spec.GetMessagesRequest) (*spec.GetMessagesResponse, error) {
+	messages, err := svc.dbHandler.GetMessages(ctx, req.ConversationID, req.Limit, req.Cursor)
 	if err != nil {
 		return nil, err
 	}

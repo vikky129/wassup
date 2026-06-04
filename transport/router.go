@@ -12,21 +12,21 @@ func Router(h *HandlerStruct, wsHandler *ws.WebSocketHandler) *chi.Mux {
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
-		r.Post("/set_profile", h.SetProfileHandler)
-		r.Post("/upload_profile_image", h.UploadProfileImageHandler)
-		r.Post("/create_conversation", h.CreateConversationHandler)
-		r.Post("/add_message", h.AddMessageHandler)
-		r.Post("/make_member_admin", h.MakeMemberAdminHandler)
-		r.Post("/remove_member", h.RemoveMemberHandler)
-		r.Post("/add_member", h.AddMemberHandler)
-		r.Post("/add_media_message", h.AddMediaMessageHandler)
+		r.Post("/users/{userID}/profile", h.SetProfileHandler)
+		r.Post("/users/{userID}/profile/image", h.UploadProfileImageHandler)
+		r.Post("/conversations", h.CreateConversationHandler)
+		r.Post("/conversations/{convID}/message", h.AddMessageHandler)
+		r.Post("/conversations/{convID}/users/{userID}/admin", h.MakeMemberAdminHandler)
+		r.Post("/conversations/{convID}/users/{userID}/remove", h.RemoveMemberHandler)
+		r.Post("/conversations/{convID}/users/{userID}", h.AddMemberHandler)
+		r.Post("/conversations/{convID}/message/media", h.AddMediaMessageHandler)
 		r.Get("/conversations/{convID}/messages", h.GetMessageHandler)
-		r.Get("/list_conversations", h.ListConversationsHandler)
+		r.Get("/conversations", h.ListConversationsHandler)
 		r.Get("/ws", wsHandler.WsMessageHandler)
 	})
 
-	r.Post("/send_otp", h.SendOTPHandler)
-	r.Post("/verify_otp", h.VerifyOTPHandler)
+	r.Post("/otp/send", h.SendOTPHandler)
+	r.Post("/otp/verify", h.VerifyOTPHandler)
 
 	return r
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"personal/wassup/bl"
 	"personal/wassup/redis"
 	"sync"
 	"time"
@@ -17,7 +16,7 @@ import (
 type WSClient struct {
 	conn         *websocket.Conn
 	messageChan  chan any
-	blHandler    *bl.WassupHandler
+	convSvc      ConversationStatusUpdater
 	closeChan    chan struct{}
 	responseChan chan any
 	lock         sync.Locker
@@ -25,11 +24,15 @@ type WSClient struct {
 	cacheHandler *redis.CacheHandler
 }
 
-func NewWSClient(conn *websocket.Conn, blHandler *bl.WassupHandler, closeChan chan struct{}, userID string, cacheHandler *redis.CacheHandler) *WSClient {
+type ConversationStatusUpdater interface {
+	UpdateParticipantStatusForConversation(ctx context.Context, convID string, userID string, status string) error
+}
+
+func NewWSClient(conn *websocket.Conn, convSvc ConversationStatusUpdater, closeChan chan struct{}, userID string, cacheHandler *redis.CacheHandler) *WSClient {
 	client := &WSClient{
 		conn:         conn,
 		messageChan:  make(chan any),
-		blHandler:    blHandler,
+		convSvc:      convSvc,
 		closeChan:    closeChan,
 		userID:       userID,
 		lock:         &sync.Mutex{},
@@ -75,7 +78,7 @@ func (wsc *WSClient) readMessage(conn *websocket.Conn, closeChan chan struct{}) 
 			}
 
 			if messageRead.MessageType == MessageDeliveryStatus || messageRead.MessageType == MessageReadStatus {
-				err = wsc.blHandler.UpdateParticipantStatusForConversation(context.Background(), messageRead.ConversationID, messageRead.UserID, string(messageRead.MessageType))
+				err = wsc.convSvc.UpdateParticipantStatusForConversation(context.Background(), messageRead.ConversationID, messageRead.UserID, string(messageRead.MessageType))
 				if err != nil {
 					fmt.Println("failed updating participant status for conversation:", err)
 					continue

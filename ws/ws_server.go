@@ -19,14 +19,14 @@ var upgrader = websocket.Upgrader{
 }
 
 type WebSocketHandler struct {
-	blHandler  *bl.WassupHandler
+	convSvc    bl.ConversationService
 	localcache map[string]map[string]*wsclient.WSClient
 	redisCache *redis.CacheHandler
 }
 
-func NewWebSocketHandler(blHandler *bl.WassupHandler, redisHandler *redis.CacheHandler) *WebSocketHandler {
+func NewWebSocketHandler(convSvc bl.ConversationService, redisHandler *redis.CacheHandler) *WebSocketHandler {
 	return &WebSocketHandler{
-		blHandler:  blHandler,
+		convSvc:    convSvc,
 		localcache: make(map[string]map[string]*wsclient.WSClient),
 		redisCache: redisHandler,
 	}
@@ -61,7 +61,7 @@ func (h *WebSocketHandler) WsMessageHandler(w http.ResponseWriter, req *http.Req
 
 	closeConnChan := make(chan struct{})
 
-	wsClient := wsclient.NewWSClient(conn, h.blHandler, closeConnChan, userID, h.redisCache)
+	wsClient := wsclient.NewWSClient(conn, h.convSvc, closeConnChan, userID, h.redisCache)
 
 	go func() {
 		<-closeConnChan

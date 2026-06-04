@@ -12,7 +12,7 @@ const (
 	ParticipantTypeMember = "Member"
 )
 
-func (wh *WassupHandler) CreateGroupConversation(ctx context.Context, req *spec.CreateConversationRequest) (string, error) {
+func (svc *conversationService) CreateGroupConversation(ctx context.Context, req *spec.CreateConversationRequest) (string, error) {
 	userID, ok := ctx.Value("user_id").(string)
 	if !ok || userID == "" {
 		return "", fmt.Errorf("user_id not found in context")
@@ -41,7 +41,7 @@ func (wh *WassupHandler) CreateGroupConversation(ctx context.Context, req *spec.
 		conversation.Description = req.Description
 	}
 
-	convID, err := wh.dbHandler.ConvHandler.CreateConversation(ctx, conversation)
+	convID, err := svc.dbHandler.CreateConversation(ctx, conversation)
 	if err != nil {
 		return "", err
 	}
@@ -49,8 +49,8 @@ func (wh *WassupHandler) CreateGroupConversation(ctx context.Context, req *spec.
 	return convID, nil
 }
 
-func (wh *WassupHandler) MakeMemberAdmin(ctx context.Context, convID string, userID string) error {
-	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, convID)
+func (svc *conversationService) MakeMemberAdmin(ctx context.Context, convID string, userID string) error {
+	participants, err := svc.dbHandler.GetConversationParticipants(ctx, convID)
 	if err != nil {
 		return err
 	}
@@ -68,16 +68,16 @@ func (wh *WassupHandler) MakeMemberAdmin(ctx context.Context, convID string, use
 		return fmt.Errorf("user not found in conversation")
 	}
 
-	return wh.dbHandler.ConvHandler.UpdateConversationParticipants(ctx, convID, participants)
+	return svc.dbHandler.UpdateConversationParticipants(ctx, convID, participants)
 }
 
-func (wh *WassupHandler) RemoveMember(ctx context.Context, convID string, userID string) error {
+func (svc *conversationService) RemoveMember(ctx context.Context, convID string, userID string) error {
 
 	currUserID, ok := ctx.Value("user_id").(string)
 	if !ok || currUserID == "" {
 		return fmt.Errorf("user_id not found in context")
 	}
-	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, convID)
+	participants, err := svc.dbHandler.GetConversationParticipants(ctx, convID)
 	if err != nil {
 		return err
 	}
@@ -101,11 +101,11 @@ func (wh *WassupHandler) RemoveMember(ctx context.Context, convID string, userID
 		}
 	}
 
-	return wh.dbHandler.ConvHandler.UpdateConversationParticipants(ctx, convID, updatedParticipants)
+	return svc.dbHandler.UpdateConversationParticipants(ctx, convID, updatedParticipants)
 }
 
-func (wh *WassupHandler) AddMember(ctx context.Context, convID string, userID string) error {
-	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, convID)
+func (svc *conversationService) AddMember(ctx context.Context, convID string, userID string) error {
+	participants, err := svc.dbHandler.GetConversationParticipants(ctx, convID)
 	if err != nil {
 		return err
 	}
@@ -124,26 +124,26 @@ func (wh *WassupHandler) AddMember(ctx context.Context, convID string, userID st
 
 	participants = append(participants, newParticipant)
 
-	return wh.dbHandler.ConvHandler.UpdateConversationParticipants(ctx, convID, participants)
+	return svc.dbHandler.UpdateConversationParticipants(ctx, convID, participants)
 }
 
-func (wh *WassupHandler) ListConversations(ctx context.Context) ([]spec.Conversation, error) {
+func (svc *conversationService) ListConversations(ctx context.Context) ([]spec.Conversation, error) {
 	userID, ok := ctx.Value("user_id").(string)
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("user_id not found in context")
 	}
 
-	return wh.dbHandler.ConvHandler.ListConversations(ctx, userID)
+	return svc.dbHandler.ListConversations(ctx, userID)
 }
 
-func (wh *WassupHandler) UpdateParticipantStatusForConversation(ctx context.Context, convID string, userID string, status string) error {
-	err := wh.dbHandler.ConvHandler.UpdateConversationParticipantStatus(context.Background(), convID, userID, status)
+func (svc *conversationService) UpdateParticipantStatusForConversation(ctx context.Context, convID string, userID string, status string) error {
+	err := svc.dbHandler.UpdateConversationParticipantStatus(context.Background(), convID, userID, status)
 	if err != nil {
 		fmt.Println("failed updating conversation participant status:", err)
 		return err
 	}
 
-	participants, err := wh.dbHandler.ConvHandler.GetConversationParticipants(ctx, convID)
+	participants, err := svc.dbHandler.GetConversationParticipants(ctx, convID)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (wh *WassupHandler) UpdateParticipantStatusForConversation(ctx context.Cont
 		userIDs = append(userIDs, participant.UserID)
 	}
 
-	go wh.liveNotifyHandler.UpdateParticipantStatusForConversation(ctx, convID, userID, userIDs, status)
+	go svc.liveNotifyHandler.UpdateParticipantStatusForConversation(ctx, convID, userID, userIDs, status)
 
 	return nil
 }

@@ -2,24 +2,41 @@ package transport
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"personal/wassup/cerror"
+
+	"log"
 )
 
 func handleResponse(ws http.ResponseWriter, result any, err error) {
 	if err != nil {
-		if cerr, ok := err.(*cerror.AppError); ok {
-			http.Error(ws, cerr.Error(), cerr.StatusCode)
-			return
+		var errResp ErrResponse
+		var cerr *cerror.AppError
+		if errors.As(err, &cerr) {
+			errResp = ErrResponse{Error: cerr.Error()}
+			ws.Header().Set("Content-Type", "application/json")
+			ws.WriteHeader(cerr.StatusCode)
+		} else {
+			errResp = ErrResponse{Error: err.Error()}
+			ws.Header().Set("Content-Type", "application/json")
+			ws.WriteHeader(http.StatusInternalServerError)
 		}
-		http.Error(ws, err.Error(), http.StatusInternalServerError)
+		if err := json.NewEncoder(ws).Encode(errResp); err != nil {
+			log.Println("Failed to encode error response:", err)
+		}
 		return
 	}
 
-	ws.WriteHeader(http.StatusOK)
 	ws.Header().Set("Content-Type", "application/json")
+	ws.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(ws).Encode(result); err != nil {
-		http.Error(ws, "Failed to encode response", http.StatusInternalServerError)
+		log.Println("Failed to encode response:", err)
+
 		return
 	}
+}
+
+type ErrResponse struct {
+	Error string `json:"error"`
 }

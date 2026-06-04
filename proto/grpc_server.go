@@ -4,7 +4,6 @@ import (
 	context "context"
 	"fmt"
 	"log"
-	"net"
 	"personal/wassup/redis"
 	"personal/wassup/spec"
 	"personal/wassup/ws"
@@ -86,16 +85,8 @@ func (grpcH *GrpcHandler) UpdateParticipantStatusForConversation(ctx context.Con
 	return &emptypb.Empty{}, nil
 }
 
-func StartGrpcServer(wsHandler *ws.WebSocketHandler, redisHandler *redis.CacheHandler) {
-	lis, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
+func NewGrpcServer(wsHandler *ws.WebSocketHandler, redisHandler *redis.CacheHandler) *grpc.Server {
 	s := grpc.NewServer()
-
 	RegisterMessengerServer(s, NewGrpcHandler(wsHandler, redisHandler))
-	log.Printf("server listening at %v", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	return s
 }

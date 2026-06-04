@@ -8,6 +8,11 @@ const (
 	ErrDatabaseConnection  = "database connection error"
 	ErrDatabaseOperation   = "database operation error"
 	ErrInternalServerError = "internal server error"
+	ErrUnauthorized        = "access denied: unauthorized"
+	ErrForbidden           = "access denied: forbidden"
+	ErrNotFound            = "resource not found"
+	ErrBadRequest          = "bad request"
+	ErrValidation          = "validation failed"
 )
 
 type AppError struct {

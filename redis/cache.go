@@ -10,6 +10,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type CacheRepository interface {
+	Init(ctx context.Context) error
+}
+
 type CacheHandler struct {
 	redisClient redis.UniversalClient
 	config      *config.Config
@@ -29,6 +33,13 @@ func (ch *CacheHandler) Init(ctx context.Context) error {
 
 	ch.redisClient = redisClient
 	return nil
+}
+
+func (ch *CacheHandler) Close() error {
+	if ch.redisClient == nil {
+		return nil
+	}
+	return ch.redisClient.Close()
 }
 
 func (ch *CacheHandler) StoreContainerDetails(ctx context.Context, userID, deviceID string) error {

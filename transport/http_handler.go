@@ -8,22 +8,30 @@ import (
 	"net/http"
 	"os"
 	"personal/wassup/bl"
+	"personal/wassup/media"
 	"personal/wassup/spec"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
-func NewHandler(wh *bl.WassupHandler) *HandlerStruct {
-	return &HandlerStruct{
-		wh: wh,
-	}
+type HandlerStruct struct {
+	authService         bl.AuthService
+	userService         bl.UserService
+	conversationService bl.ConversationService
+	messageService      bl.MessageService
+	mediaService        media.MediaRepository
 }
 
-type HandlerStruct struct {
-	wh *bl.WassupHandler
+func NewHandler(services *bl.Services, mediaService media.MediaRepository) *HandlerStruct {
+	return &HandlerStruct{
+		authService:         services.Auth,
+		userService:         services.User,
+		conversationService: services.Conversation,
+		messageService:      services.Message,
+		mediaService:        mediaService,
+	}
 }
 
 func (h *HandlerStruct) Close() error {
@@ -38,7 +46,7 @@ func (h *HandlerStruct) SendOTPHandler(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	respObj, err := h.wh.SendOTP(req.Context(), &reqObj)
+	respObj, err := h.authService.SendOTP(req.Context(), &reqObj)
 	if err != nil {
 		http.Error(res, "Failed to send OTP", http.StatusInternalServerError)
 		return
@@ -54,7 +62,7 @@ func (h *HandlerStruct) VerifyOTPHandler(res http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	respObj, err := h.wh.VerifyOTP(req.Context(), &verifyReq)
+	respObj, err := h.authService.VerifyOTP(req.Context(), &verifyReq)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to verify OTP: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -71,7 +79,7 @@ func (h *HandlerStruct) SetProfileHandler(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	respObj, err := h.wh.SetProfile(req.Context(), &profileReq)
+	respObj, err := h.userService.SetProfile(req.Context(), &profileReq)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to set profile: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -117,7 +125,7 @@ func (h *HandlerStruct) UploadProfileImageHandler(res http.ResponseWriter, req *
 		return
 	}
 
-	err = h.wh.UploadProfileImage(req.Context(), userID, filePath)
+	err = h.userService.UploadProfileImage(req.Context(), userID, filePath)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to upload profile image: %v", err), http.StatusInternalServerError)
 		return
@@ -135,7 +143,7 @@ func (h *HandlerStruct) CreateConversationHandler(res http.ResponseWriter, req *
 
 	fmt.Printf("Received CreateConversationRequest: %+v\n", createConvReq)
 
-	respObj, err := h.wh.CreateGroupConversation(req.Context(), &createConvReq)
+	respObj, err := h.conversationService.CreateGroupConversation(req.Context(), &createConvReq)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to create conversation: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -151,7 +159,7 @@ func (h *HandlerStruct) AddMessageHandler(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	resp, err := h.wh.AddMessage(req.Context(), &addMsgReq)
+	resp, err := h.messageService.AddMessage(req.Context(), &addMsgReq)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to add message: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -167,7 +175,7 @@ func (h *HandlerStruct) MakeMemberAdminHandler(res http.ResponseWriter, req *htt
 		return
 	}
 
-	err := h.wh.MakeMemberAdmin(req.Context(), updateReq.ConversationID, updateReq.UserID)
+	err := h.conversationService.MakeMemberAdmin(req.Context(), updateReq.ConversationID, updateReq.UserID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to make member admin: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -184,7 +192,7 @@ func (h *HandlerStruct) RemoveMemberHandler(res http.ResponseWriter, req *http.R
 		return
 	}
 
-	err := h.wh.RemoveMember(req.Context(), updateReq.ConversationID, updateReq.UserID)
+	err := h.conversationService.RemoveMember(req.Context(), updateReq.ConversationID, updateReq.UserID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to remove member: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -201,7 +209,7 @@ func (h *HandlerStruct) AddMemberHandler(res http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	err := h.wh.AddMember(req.Context(), updateReq.ConversationID, updateReq.UserID)
+	err := h.conversationService.AddMember(req.Context(), updateReq.ConversationID, updateReq.UserID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to add member: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -211,7 +219,7 @@ func (h *HandlerStruct) AddMemberHandler(res http.ResponseWriter, req *http.Requ
 }
 
 func (h *HandlerStruct) ListConversationsHandler(res http.ResponseWriter, req *http.Request) {
-	respObj, err := h.wh.ListConversations(req.Context())
+	respObj, err := h.conversationService.ListConversations(req.Context())
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to list conversations: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -246,6 +254,7 @@ func (h *HandlerStruct) AddMediaMessageHandler(res http.ResponseWriter, req *htt
 		http.Error(res, fmt.Sprintf("Error retrieving file: %v", err), http.StatusBadRequest)
 		return
 	}
+
 	defer file.Close()
 
 	if header.Size > 10*1024*1024 { // 10MB limit
@@ -261,18 +270,15 @@ func (h *HandlerStruct) AddMediaMessageHandler(res http.ResponseWriter, req *htt
 
 	messageType := getMediaType(header)
 
-	filePath := fmt.Sprintf("./uploads/message/%s_%s", uuid.NewString(), header.Filename)
-	outFile, err := os.Create(filePath)
+	var fileBytes []byte
+	_, err = file.Read(fileBytes)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("Error saving file: %v", err), http.StatusInternalServerError)
+		http.Error(res, "error reading file bytes", http.StatusBadRequest)
 		return
 	}
-	defer outFile.Close()
-
-	_, err = io.Copy(outFile, file)
+	path, err := h.mediaService.UploadMedia(req.Context(), fileBytes, header.Filename, messageType)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("Error saving file: %v", err), http.StatusInternalServerError)
-		return
+		http.Error(res, fmt.Sprintf("failed to upload with error: %v", err), http.StatusInternalServerError)
 	}
 
 	addMsgReq := &spec.AddMediaMessageRequest{
@@ -282,7 +288,7 @@ func (h *HandlerStruct) AddMediaMessageHandler(res http.ResponseWriter, req *htt
 		MediaType:         messageType,
 	}
 
-	resp, err := h.wh.AddMediaMessage(req.Context(), addMsgReq, filePath)
+	resp, err := h.messageService.AddMediaMessage(req.Context(), addMsgReq, path)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to add media message: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -314,7 +320,7 @@ func (h *HandlerStruct) GetMessageHandler(res http.ResponseWriter, req *http.Req
 	getMsgReq.ConversationID = convID
 	getMsgReq.Cursor = cursor
 
-	respObj, err := h.wh.GetMessages(req.Context(), &getMsgReq)
+	respObj, err := h.messageService.GetMessages(req.Context(), &getMsgReq)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("Failed to get messages: %s", err.Error()), http.StatusInternalServerError)
 		return

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"personal/wassup/middleware"
 	"personal/wassup/spec"
 	"time"
 )
@@ -12,9 +11,9 @@ import (
 // Soferi
 // Ultra D3
 
-func (wh *WassupHandler) SendOTP(ctx context.Context, otpRequest *spec.SendOtpRequest) (*spec.SendOtpResponse, error) {
+func (svc *authService) SendOTP(ctx context.Context, otpRequest *spec.SendOtpRequest) (*spec.SendOtpResponse, error) {
 	otp := rand.Int63n(10000)
-	err := wh.redisHandler.Set("otp:"+otpRequest.PhoneNumber, otp)
+	err := svc.redisHandler.Set("otp:"+otpRequest.PhoneNumber, otp)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +23,8 @@ func (wh *WassupHandler) SendOTP(ctx context.Context, otpRequest *spec.SendOtpRe
 	}, nil
 }
 
-func (wh *WassupHandler) VerifyOTP(ctx context.Context, otpRequest *spec.VerifyOtpRequest) (*spec.VerifyOtpResponse, error) {
-	otp, err := wh.redisHandler.Get("otp:" + otpRequest.PhoneNumber)
+func (svc *authService) VerifyOTP(ctx context.Context, otpRequest *spec.VerifyOtpRequest) (*spec.VerifyOtpResponse, error) {
+	otp, err := svc.redisHandler.Get("otp:" + otpRequest.PhoneNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +42,12 @@ func (wh *WassupHandler) VerifyOTP(ctx context.Context, otpRequest *spec.VerifyO
 		UpdatedAt:   time.Now().Unix(),
 	}
 
-	userID, err := wh.dbHandler.UserHandler.CreateUser(ctx, userObj)
+	userID, err := svc.dbHandler.CreateUser(ctx, userObj)
 	if err != nil {
 		return nil, err
 	}
 
-	jwt, err := middleware.GenerateJWT(userID)
+	jwt, err := svc.tokenService.GenerateToken(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,13 +59,13 @@ func (wh *WassupHandler) VerifyOTP(ctx context.Context, otpRequest *spec.VerifyO
 	}, nil
 }
 
-func (wh *WassupHandler) SetProfile(ctx context.Context, setProfileRequest *spec.SetProfileRequest) (*spec.SetProfileResponse, error) {
+func (svc *userService) SetProfile(ctx context.Context, setProfileRequest *spec.SetProfileRequest) (*spec.SetProfileResponse, error) {
 	userID, ok := ctx.Value("user_id").(string)
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("user_id not found in context")
 	}
 
-	userObj, err := wh.dbHandler.UserHandler.GetUserByID(ctx, userID)
+	userObj, err := svc.dbHandler.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (wh *WassupHandler) SetProfile(ctx context.Context, setProfileRequest *spec
 	userObj.Bio = setProfileRequest.Bio
 	userObj.UpdatedAt = time.Now().Unix()
 
-	err = wh.dbHandler.UserHandler.UpdateUser(ctx, userObj)
+	err = svc.dbHandler.UpdateUser(ctx, userObj)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +84,9 @@ func (wh *WassupHandler) SetProfile(ctx context.Context, setProfileRequest *spec
 	}, nil
 }
 
-func (wh *WassupHandler) UploadProfileImage(ctx context.Context, userID, filePath string) error {
+func (svc *userService) UploadProfileImage(ctx context.Context, userID, filePath string) error {
 
-	userObj, err := wh.dbHandler.UserHandler.GetUserByID(ctx, userID)
+	userObj, err := svc.dbHandler.GetUserByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func (wh *WassupHandler) UploadProfileImage(ctx context.Context, userID, filePat
 	userObj.PhotoURL = filePath
 	userObj.UpdatedAt = time.Now().Unix()
 
-	err = wh.dbHandler.UserHandler.UpdateUser(ctx, userObj)
+	err = svc.dbHandler.UpdateUser(ctx, userObj)
 	if err != nil {
 		return err
 	}

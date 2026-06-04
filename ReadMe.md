@@ -6,7 +6,11 @@ What I Learnt in this Project
 4. Integration with Mongo
 5. Designing Indexes. 
 6. Some coding design Principles
-    - a. Business layer cannot invoke the transport layer.
+    - a. Understanding flow between Business, Middleware and transport layers.
     - b. Implementing interfaces. When writing BL think if it is Unit Testable.
+    - c. Defining interface by the consumer and implementation at the producer. 
+    - d. Effectively starting and closing the App
+    - e. Coming up with Resource(Api) paths
+    - f. Handling fire and forget go-routines.
 7. Websocket implementation
 8. Creating and Validating JWT's
