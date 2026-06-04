@@ -12,5 +12,7 @@ What I Learnt in this Project
     - d. Effectively starting and closing the App
     - e. Coming up with Resource(Api) paths
     - f. Handling fire and forget go-routines.
+    - g. Consistent response type (JSON) from response function. 
+    - h. Writing status codes
 7. Websocket implementation
 8. Creating and Validating JWT's
